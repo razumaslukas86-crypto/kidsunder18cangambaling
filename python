@@ -1,0 +1,113 @@
+import keyboard
+import time
+import json
+from datetime import datetime
+
+class KeyboardRecorder:
+    def __init__(self):
+        self.recorded_events = []
+        self.recording = False
+        self.start_time = None
+    
+    def start_recording(self):
+        """Start recording keyboard events"""
+        self.recorded_events = []
+        self.recording = True
+        self.start_time = time.time()
+        print("Recording started... Press F8 to stop.")
+        
+        # Record all keyboard events
+        keyboard.hook(self.record_event)
+        
+        # Stop recording when F8 is pressed
+        keyboard.wait('F8')
+        self.stop_recording()
+    
+    def record_event(self, event):
+        """Record each keyboard event"""
+        if self.recording and event.event_type in ['down', 'up']:
+            timestamp = time.time() - self.start_time
+            self.recorded_events.append({
+                'event_type': event.event_type,
+                'name': event.name,
+                'scan_code': event.scan_code,
+                'timestamp': timestamp
+            })
+    
+    def stop_recording(self):
+        """Stop recording"""
+        self.recording = False
+        keyboard.unhook_all()
+        print(f"Recording stopped. {len(self.recorded_events)} events recorded.")
+    
+    def save_recording(self, filename):
+        """Save recording to file"""
+        with open(filename, 'w') as f:
+            json.dump(self.recorded_events, f, indent=2)
+        print(f"Recording saved to {filename}")
+    
+    def load_recording(self, filename):
+        """Load recording from file"""
+        with open(filename, 'r') as f:
+            self.recorded_events = json.load(f)
+        print(f"Recording loaded from {filename}")
+    
+    def play_recording(self, speed=1.0):
+        """Play back the recorded events"""
+        if not self.recorded_events:
+            print("No recording to play!")
+            return
+        
+        print("Playing back in 3 seconds...")
+        time.sleep(3)
+        print("Playing recording...")
+        
+        start_time = time.time()
+        first_event_time = self.recorded_events[0]['timestamp']
+        
+        for event in self.recorded_events:
+            # Wait for the correct timing
+            elapsed = time.time() - start_time
+            target_time = event['timestamp'] / speed
+            
+            if elapsed < target_time:
+                time.sleep(target_time - elapsed)
+            
+            # Simulate the key event
+            if event['event_type'] == 'down':
+                keyboard.press(event['name'])
+            else:
+                keyboard.release(event['name'])
+        
+        print("Playback completed!")
+
+# Usage example
+if __name__ == "__main__":
+    recorder = KeyboardRecorder()
+    
+    print("Keyboard Recorder")
+    print("1. Start recording (F8 to stop)")
+    print("2. Play recording")
+    print("3. Save recording")
+    print("4. Load recording")
+    
+    choice = input("Choose option (1-4): ")
+    
+    if choice == '1':
+        recorder.start_recording()
+        filename = input("Enter filename to save: ")
+        recorder.save_recording(f"{filename}.json")
+    
+    elif choice == '2':
+        filename = input("Enter filename to load: ")
+        recorder.load_recording(filename)
+        speed = float(input("Playback speed (1.0 = normal): ") or "1.0")
+        recorder.play_recording(speed)
+    
+    elif choice == '3':
+        filename = input("Enter filename: ")
+        recorder.save_recording(f"{filename}.json")
+    
+    elif choice == '4':
+        filename = input("Enter filename: ")
+        recorder.load_recording(filename)
